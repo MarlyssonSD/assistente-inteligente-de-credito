@@ -75,22 +75,54 @@ def carregar_dados_parquet(caminho_arquivo: str) -> list[emp.Empresa]:
         empresas.append(empresa)
     return empresas
 
+def carregar_dados_de_arquivo(caminho_do_arquivo: str) -> list[emp.Empresa]:
+    """
+    Carrega os dados de um arquivo, identificando seu formato pela extensão
+    e chamando a função de carregamento apropriada.
+    """
+    if caminho_do_arquivo.lower().endswith('.csv'):
+        print(f"INFO: Identificado arquivo CSV em '{caminho_do_arquivo}'. Chamando o leitor de CSV...")
+        return carregar_dados_csv(caminho_do_arquivo)
+    
+    elif caminho_do_arquivo.lower().endswith('.json'):
+        print(f"INFO: Identificado arquivo JSON em '{caminho_do_arquivo}'. Chamando o leitor de JSON...")
+        return carregar_dados_json(caminho_do_arquivo)
+    
+    elif caminho_do_arquivo.lower().endswith('.xml'):
+        print(f"INFO: Identificado arquivo XML em '{caminho_do_arquivo}'. Chamando o leitor de XML...")
+        return carregar_dados_xml(caminho_do_arquivo)
+        
+    elif caminho_do_arquivo.lower().endswith('.parquet'):
+        print(f"INFO: Identificado arquivo Parquet em '{caminho_do_arquivo}'. Chamando o leitor de Parquet...")
+        return carregar_dados_parquet(caminho_do_arquivo)
+        
+    else:
+        # Lança um erro se o formato não for suportado
+        raise ValueError(f"ERRO: Formato de arquivo não suportado: {caminho_do_arquivo}")
 
+# --- TESTANDO A FUNÇÃO DINÂMICA ---
 
+# Defina a lista de arquivos que você quer testar
+arquivos_para_testar = [
+    'dados/dadoscreditoficticios.csv',
+    'dados/dadoscreditoficticios.json',
+    'dados/dadoscreditoficticios.xml',
+    'dados/dadoscreditoficticios.parquet',
+]
 
+for arquivo in arquivos_para_testar:
+    try:
+        print(f"\n--- Tentando carregar o arquivo: {arquivo} ---")
+        lista_de_empresas = carregar_dados_de_arquivo(arquivo)
+        
+        print(f"SUCESSO: Carregados {len(lista_de_empresas)} registros.")
+        # Verificando se os dados estão corretos (opcional)
+        if lista_de_empresas:
+            print(f"Exemplo de registro: {lista_de_empresas[0].nome}")
 
-dados_carregados = carregar_dados_csv('dados/dadoscreditoficticios.csv')
-print(dados_carregados[1].nome)
-print(f"Total de registros carregados: {len(dados_carregados)}")
-
-dados_carregados = carregar_dados_json('dados/dadoscreditoficticios.json')
-print(dados_carregados[1].nome)
-print(f"Total de registros carregados: {len(dados_carregados)}")
-
-dados_carregados = carregar_dados_xml('dados/dadoscreditoficticios.xml')
-print(dados_carregados[1].nome)
-print(f"Total de registros carregados: {len(dados_carregados)}")
-
-dados_carregados = carregar_dados_parquet("dados/dadoscreditoficticios.parquet")
-print(dados_carregados[1].nome)
-print(f"Total de registros carregados: {len(dados_carregados)}")
+    except FileNotFoundError:
+        print(f"ERRO: O arquivo '{arquivo}' não foi encontrado.")
+    except ValueError as e:
+        print(e) # Imprime a mensagem de erro da nossa função
+    except Exception as e:
+        print(f"ERRO inesperado ao processar '{arquivo}': {e}")
