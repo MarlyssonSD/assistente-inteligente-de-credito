@@ -45,6 +45,25 @@ def analisar_empresa_endpoint(nome_empresa: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar análise: {e}")
 
+@app.get("/empresa/{nome_empresa}")
+def get_empresa_details_endpoint(nome_empresa: str):
+    """Retorna todos os dados de uma empresa específica."""
+    empresa_encontrada = next((emp for emp in LISTA_EMPRESAS if emp.nome == nome_empresa), None)
+    
+    if not empresa_encontrada:
+        raise HTTPException(status_code=404, detail="Empresa nao encontrada")
+    
+    # Converte o objeto Empresa para um dicionário para ser retornado como JSON
+    return {
+        "nome": empresa_encontrada.nome,
+        "receita_anual": empresa_encontrada.receita_anual,
+        "divida_total": empresa_encontrada.divida_total,
+        "prazo_pagamento": empresa_encontrada.prazo_pagamento,
+        "setor": empresa_encontrada.setor,
+        "rating": empresa_encontrada.rating,
+        "noticias_recentes": empresa_encontrada.noticias_recentes
+    }
+
 # --- NOVO ENDPOINT DE SIMULAÇÃO ---
 @app.post("/simular")
 def simular_cenario_endpoint(payload: SimulacaoPayload):
