@@ -38,7 +38,7 @@ empresa_selecionada = st.selectbox(
     placeholder="Digite ou selecione um nome..."
 )
 
-# --- Inicialização do Estado da Sessão para guardar o resultado ---
+# --- Inicialização do Estado da Sessão ---
 if 'resultado_texto' not in st.session_state:
     st.session_state.resultado_texto = ""
 if 'titulo_resultado' not in st.session_state:
@@ -46,13 +46,13 @@ if 'titulo_resultado' not in st.session_state:
 
 # --- Container de Ação Principal (Dados + Ações) ---
 if empresa_selecionada:
-    # 1. Exibir Dados da Empresa (Exatamente como no seu código)
+    # 1. Exibir Dados da Empresa
     try:
         res = requests.get(f"{API_URL}/empresa/{empresa_selecionada}")
         if res.status_code == 200:
             dados_empresa = res.json()
-            with st.container(border=True): # Agrupa visualmente
-                st.subheader(f"Dados Cadastrais de: {dados_empresa.get('nome')}")
+            with st.container(border=True):
+                st.subheader(f"Dados Cadastrais: {dados_empresa.get('nome')}")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Receita Anual", f"R$ {dados_empresa.get('receita_anual', 0):,}")
@@ -68,10 +68,9 @@ if empresa_selecionada:
 
     st.divider()
 
-    # 2. Ações do Usuário (Análise e Simulação) - Movidas para cima no fluxo lógico
-    col_analise, col_simulacao = st.columns([1, 2]) # [proporção de tamanho]
+    # 2. Ações do Usuário (Análise e Simulação)
+    col_analise, col_simulacao = st.columns([1, 2])
 
-    # Coluna de Análise Simples
     with col_analise:
         st.markdown("**Análise Padrão**")
         st.markdown("Clique para gerar a análise completa com os dados atuais.")
@@ -85,17 +84,30 @@ if empresa_selecionada:
                 else:
                     st.error(f"Erro na análise: {res.json().get('detail', 'Erro desconhecido')}")
 
-    # Coluna de Simulação
+    # --- Coluna de Simulação ATUALIZADA com mais campos ---
     with col_simulacao:
         with st.form("formulario_simulacao"):
             st.markdown("**Simular Cenário**")
-            receita = st.number_input("Alterar Receita Anual para:", value=None, key="sim_receita")
-            divida = st.number_input("Alterar Dívida Total para:", value=None, key="sim_divida")
             
+            # Layout em colunas para os campos do formulário
+            col_form1, col_form2 = st.columns(2)
+            with col_form1:
+                receita = st.number_input("Alterar Receita Anual para:", value=None, key="sim_receita")
+                divida = st.number_input("Alterar Dívida Total para:", value=None, key="sim_divida")
+            with col_form2:
+                # --- NOVO CAMPO 1 ---
+                prazo_pagamento = st.number_input("Alterar Prazo Pagamento (dias):", value=None, key="sim_prazo")
+                # --- NOVO CAMPO 2 ---
+                opcoes_rating = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-"]
+                rating = st.selectbox("Alterar Rating para:", options=opcoes_rating, index=None, placeholder="Manter atual", key="sim_rating")
+
             if st.form_submit_button("Executar Simulação", use_container_width=True):
                 alteracoes = {}
                 if receita is not None: alteracoes["receita_anual"] = receita
                 if divida is not None: alteracoes["divida_total"] = divida
+                # --- ADICIONADO À COLETA ---
+                if prazo_pagamento is not None: alteracoes["prazo_pagamento"] = prazo_pagamento
+                if rating is not None: alteracoes["rating"] = rating
                 
                 if not alteracoes:
                     st.warning("Nenhum parametro de simulacao foi alterado.")
