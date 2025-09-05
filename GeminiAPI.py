@@ -14,7 +14,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 # Modelos
 model = genai.GenerativeModel("gemini-2.5-flash")
 # model = genai.GenerativeModel("gemini-2.5-pro")
-nome_da_empresa = "Empresa 4987"
+
 
 # Função de análise APRIMORADA
 def gerar_analise_de_credito(empresa: emp) -> str:
@@ -49,26 +49,29 @@ def gerar_analise_de_credito(empresa: emp) -> str:
     return response.text
 
 
-
-print("Carregando dados das empresas...")
-# Usando a função dinâmica que você criou para carregar os dados do CSV
-lista_de_empresas = carregar_dados_de_arquivo('dados/dadoscreditoficticios.csv', debug=True)
-print(f"{len(lista_de_empresas)} registros carregados com sucesso.")
-
-
-empresa_para_analise = None
-for empresa in lista_de_empresas:
-    if empresa.nome == nome_da_empresa:
-        empresa_para_analise = empresa
-        break
-
-if not empresa_para_analise:
-    raise ValueError(f"{nome_da_empresa} não encontrada nos dados!")
-
-print(f"\nEmpresa selecionada para análise: {empresa_para_analise.nome}")
-
 # MAIN
 if __name__ == "__main__":
+    # nome_da_empresa = "Empresa 4987"
+    # nome_da_empresa = "Empresa 4976"
+    nome_da_empresa = "Empresa 4957"
+    
+    print("Carregando dados das empresas...")
+    # Usando a função dinâmica que você criou para carregar os dados do CSV
+    lista_de_empresas = carregar_dados_de_arquivo('dados/dadoscreditoficticios.csv', debug=True)
+    print(f"{len(lista_de_empresas)} registros carregados com sucesso.")
+
+
+    empresa_para_analise = None
+    for empresa in lista_de_empresas:
+        if empresa.nome == nome_da_empresa:
+            empresa_para_analise = empresa
+            break
+
+    if not empresa_para_analise:
+        raise ValueError(f"{nome_da_empresa} não encontrada nos dados!")
+
+    print(f"\nEmpresa selecionada para análise: {empresa_para_analise.nome}")
+    
     analise_gerada = gerar_analise_de_credito(empresa_para_analise)
     print("\n--- Análise de Crédito Gerada ---")
     print(analise_gerada)
