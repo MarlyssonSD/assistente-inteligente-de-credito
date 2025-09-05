@@ -1,9 +1,17 @@
+# GeminiAPI.py
+
+"""
+Módulo central de interação com a API Generativa do Google (Gemini).
+Responsável por formatar os dados da empresa em um prompt estruturado
+e processar a resposta da IA para gerar a análise de crédito.
+"""
+
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 from Empresa import Empresa as emp
-from Parses import carregar_dados_de_arquivo
 
+# --- Configuração Inicial ---
 
 # Carregar variáveis do .env
 load_dotenv()
@@ -16,86 +24,83 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 # model = genai.GenerativeModel("gemini-2.5-pro")
 
 
-# Função de análise APRIMORADA
 def gerar_analise_de_credito(empresa: emp) -> str:
     """
-    Gera uma análise de crédito de forma robusta, com tratamento de erros
-    e verificação de bloqueios de segurança da API.
+    Gera uma análise de crédito textual para uma única empresa usando a IA Generativa.
+
+    Esta função implementa a lógica central de RAG (Retrieval-Augmented Generation):
+    1. Recebe os dados específicos de uma empresa (empresa).
+    2. Formata esses dados em um prompt detalhado.
+    3. Define regras estritas para a IA (ex: formato de saída, proibição de formatação)
+       para garantir consistência e evitar problemas de renderização.
+    4. Captura e trata erros de segurança da API da IA.
+
+    Args:
+        empresa (emp.Empresa): Objeto contendo todos os dados da empresa a ser analisada.
+
+    Returns:
+        str: A análise de crédito textual gerada pela IA ou uma mensagem de erro formatada.
     """
+    
+    # 1. Formatação dos dados de entrada para o prompt.
+    # Simplificamos os dados (sem R$, etc.) para evitar que a IA se confunda
+    # ou gere artefatos de formatação indesejados.
     dados_formatados = f"""
     - Nome da Empresa: {empresa.nome}
-    - Setor de Atuação: {empresa.setor}
-    - Receita Anual: R$ {empresa.receita_anual:,}
-    - Dívida Total: R$ {empresa.divida_total:,}
-    - Prazo Médio de Pagamento: {empresa.prazo_pagamento} dias
-    - Rating de Crédito Atual: {empresa.rating}
-    - Resumo de Notícias Recentes: "{empresa.noticias_recentes}"
+    - Setor de Atuacao: {empresa.setor}
+    - Receita Anual: {empresa.receita_anual}
+    - Divida Total: {empresa.divida_total}
+    - Prazo Medio de Pagamento: {empresa.prazo_pagamento} dias
+    - Rating de Credito Atual: {empresa.rating}
+    - Resumo de Noticias Recentes: "{empresa.noticias_recentes}"
     """
 
+    # 2. Construção do prompt com engenharia de prompt detalhada.
+    # As instruções são explícitas para mitigar "alucinações" e forçar
+    # a IA a gerar um texto limpo e sem formatação complexa (Markdown).
     prompt = f"""
-    **Contexto:** Você é um assistente de IA especialista em análise de crédito. Sua única e exclusiva fonte de informação para a tarefa abaixo são os dados fornecidos no campo "Dados da Empresa". Você está proibido de usar conhecimento externo ou solicitar mais informações. Sua resposta DEVE ser baseada 100% nos dados a seguir.
+    **Instrucoes Criticas:**
+    1.  Voce e um analista de credito senior. Sua resposta deve ser em **TEXTO PURO**.
+    2.  **NAO USE** formatacao Markdown (sem **, *, #, etc).
+    3.  **NAO USE** acentos ou caracteres especiais complexos (ex: ç, ´, ~). Escreva "aprovacao", "decisao", "credito".
+    4.  Baseie-se **APENAS** nos dados fornecidos abaixo.
 
-    **Dados da Empresa:**
+    **Dados da Empresa para Analise:**
     {dados_formatados}
 
-    **Tarefa Obrigatória:**
-    Com base estritamente nos "Dados da Empresa" acima, gere um parecer de crédito estruturado exatamente no formato abaixo. Não inclua preâmbulos ou notas adicionais.
+    **Tarefa de Analise:**
+    Gere um parecer de credito seguindo o formato abaixo:
 
-    **Formato da Resposta:**
-    1.  Recomendação Preliminar: (Escolha UMA: "Aprovar Concessão de Crédito", "Aprovar com Cautela", "Recusar Concessão de Crédito").
-    2.  Justificativa da Decisão: (Um parágrafo explicando o raciocínio, conectando os diferentes dados fornecidos).
-    3.  Principais Pontos de Risco: (Liste em formato de tópicos 2 a 3 riscos observados nos dados).
+    Recomendacao Preliminar: (Escolha UMA: Aprovar Credito, Aprovar com Cautela, Recusar Credito).
+
+    Justificativa da Decisao: (Escreva um paragrafo explicando o motivo da recomendacao, conectando os dados fornecidos).
+
+    Principais Pontos de Risco:
+    - (Liste o primeiro risco aqui).
+    - (Liste o segundo risco aqui).
     """
     
-    print("\n--- Tentando gerar análise com a IA (Versão Robusta) ---")
+    print(f"\nINFO: Gerando analise para {empresa.nome}...")
     
     try:
-        # Tenta gerar o conteúdo
+        # 3. Chamada para a API Generativa
         response = model.generate_content(prompt)
 
-        # ---- VERIFICAÇÃO DE SEGURANÇA E VALIDADE ----
-        # 1. Verifica se a resposta tem partes válidas. Se não tiver, foi bloqueada.
+        # 4. Tratamento de bloqueios de segurança da IA.
+        # Se response.parts estiver vazio, significa que a IA bloqueou a resposta
+        # por motivos de segurança (ex: política de conteúdo financeiro).
         if not response.parts:
-            # Tenta encontrar o motivo do bloqueio para dar uma mensagem mais clara
-            block_reason = response.prompt_feedback.block_reason.name if response.prompt_feedback else "Não especificado"
-            error_message = f"**ERRO:** A análise foi bloqueada pelo filtro de segurança da IA. Motivo: {block_reason}. Tente reformular o prompt ou analisar outra empresa."
-            print(f"!!! ANÁLISE BLOQUEADA. Motivo: {block_reason} !!!")
+            block_reason = "Nao especificado"
+            if response.prompt_feedback:
+                block_reason = response.prompt_feedback.block_reason.name
+            error_message = f"ERRO: A analise foi bloqueada pelo filtro de seguranca da IA. Motivo: {block_reason}."
+            print(f"!!! ANALISE BLOQUEADA. Motivo: {block_reason} !!!")
             return error_message
 
-        # 2. Se passou, retorna o texto normalmente
-        print("--- Análise gerada com sucesso ---")
+        print(f"INFO: Analise para {empresa.nome} gerada com sucesso.")
         return response.text
 
     except Exception as e:
-        # Captura qualquer outro erro inesperado durante a chamada da API
-        error_message = f"**ERRO INESPERADO:** Ocorreu uma falha na comunicação com a API de IA. Detalhes: {str(e)}"
+        error_message = f"ERRO INESPERADO: Falha na comunicacao com a API de IA. Detalhes: {str(e)}"
         print(f"!!! ERRO NA API: {e} !!!")
         return error_message
-
-
-# MAIN
-if __name__ == "__main__":
-    # nome_da_empresa = "Empresa 4987"
-    # nome_da_empresa = "Empresa 4976"
-    nome_da_empresa = "Empresa 4957"
-    
-    print("Carregando dados das empresas...")
-    # Usando a função dinâmica que você criou para carregar os dados do CSV
-    lista_de_empresas = carregar_dados_de_arquivo('dados/dadoscreditoficticios.csv', debug=True)
-    print(f"{len(lista_de_empresas)} registros carregados com sucesso.")
-
-
-    empresa_para_analise = None
-    for empresa in lista_de_empresas:
-        if empresa.nome == nome_da_empresa:
-            empresa_para_analise = empresa
-            break
-
-    if not empresa_para_analise:
-        raise ValueError(f"{nome_da_empresa} não encontrada nos dados!")
-
-    print(f"\nEmpresa selecionada para análise: {empresa_para_analise.nome}")
-    
-    analise_gerada = gerar_analise_de_credito(empresa_para_analise)
-    print("\n--- Análise de Crédito Gerada ---")
-    print(analise_gerada)

@@ -1,36 +1,63 @@
 # interface.py
+
+"""
+Interface do Usuário (Frontend) do Assistente de Análise de Crédito.
+Construído com Streamlit para fornecer interatividade, visualização de dados
+e acesso às funcionalidades da API de análise e simulação.
+"""
+
 import streamlit as st
 import requests
 
+# --- Configuração da Página e Constantes ---
 st.set_page_config(page_title="Assistente de Crédito", page_icon="🤖", layout="wide")
-API_URL = "http://127.0.0.1:8000"
+API_URL = "http://127.0.0.1:8000" # Endereço do backend FastAPI
 
-# --- Função de Ordenação customizada ---
-def chave_de_ordenacao_numerica(nome_empresa):
+# --- Funções Utilitárias ---
+
+def chave_de_ordenacao_numerica(nome_empresa: str) -> int:
+    """
+    Extrai o componente numérico do nome da empresa para permitir a ordenação natural.
+    Exemplo: Converte "Empresa 10" em 10, permitindo que "Empresa 2" venha antes.
+
+    Args:
+        nome_empresa (str): O nome da empresa (ex: "Empresa 123").
+
+    Returns:
+        int: O número extraído. Retorna um valor muito alto se nenhum número for encontrado,
+             colocando nomes mal formatados no final da lista.
+    """
     try:
         numero = int(nome_empresa.split(' ')[1])
         return numero
     except (IndexError, ValueError):
-        return float('inf')
+        return float('inf') # Garante que nomes sem padrão fiquem no final
 
-# --- Interface ---
+# --- Inicialização do Estado da Sessão ---
+# O st.session_state é usado para persistir os resultados da análise entre as interações
+# do usuário (cliques de botão), permitindo que o resultado seja exibido em uma área dedicada.
+if 'resultado_texto' not in st.session_state:
+    st.session_state.resultado_texto = ""
+if 'titulo_resultado' not in st.session_state:
+    st.session_state.titulo_resultado = ""
+
+# --- Seção 1: Cabeçalho e Seleção de Empresa ---
 st.title("🤖 Assistente Inteligente para Análise de Crédito")
 st.markdown("Selecione uma empresa para visualizar seus dados e iniciar a análise.")
 
-# --- Carregamento Inicial da Lista de Empresas ---
 try:
     res = requests.get(f"{API_URL}/empresas")
     if res.status_code == 200:
         lista_nomes_desordenada = res.json().get("nomes", [])
+        # Ordena a lista usando a função de chave numérica para ordenação natural
         lista_nomes = sorted(lista_nomes_desordenada, key=chave_de_ordenacao_numerica)
     else:
         lista_nomes = []
-        st.error("Nao foi possivel carregar a lista de empresas.")
+        st.error("Nao foi possivel carregar a lista de empresas do backend.")
 except requests.exceptions.ConnectionError:
     lista_nomes = []
     st.error("Backend offline. Verifique se o servidor FastAPI esta rodando.")
 
-# --- Seleção da Empresa ---
 empresa_selecionada = st.selectbox(
     "Selecione a Empresa",
     options=lista_nomes,
@@ -38,15 +65,9 @@ empresa_selecionada = st.selectbox(
     placeholder="Digite ou selecione um nome..."
 )
 
-# --- Inicialização do Estado da Sessão ---
-if 'resultado_texto' not in st.session_state:
-    st.session_state.resultado_texto = ""
-if 'titulo_resultado' not in st.session_state:
-    st.session_state.titulo_resultado = ""
-
-# --- Container de Ação Principal (Dados + Ações) ---
+# --- Seção 2: Container Principal (Dados e Ações) ---
 if empresa_selecionada:
-    # 1. Exibir Dados da Empresa
+    # 2.1. Exibição de Dados Cadastrais da Empresa Selecionada
     try:
         res = requests.get(f"{API_URL}/empresa/{empresa_selecionada}")
         if res.status_code == 200:
@@ -68,8 +89,8 @@ if empresa_selecionada:
 
     st.divider()
 
-    # 2. Ações do Usuário (Análise e Simulação)
-    col_analise, col_simulacao = st.columns([1, 2])
+    # 2.2. Ações do Usuário (Análise Padrão e Simulação de Cenários)
+    col_analise, col_simulacao = st.columns([1, 2]) # Coluna de simulação com o dobro do espaço
 
     with col_analise:
         st.markdown("**Análise Padrão**")
@@ -84,20 +105,15 @@ if empresa_selecionada:
                 else:
                     st.error(f"Erro na análise: {res.json().get('detail', 'Erro desconhecido')}")
 
-    # --- Coluna de Simulação ATUALIZADA com mais campos ---
     with col_simulacao:
         with st.form("formulario_simulacao"):
             st.markdown("**Simular Cenário**")
-            
-            # Layout em colunas para os campos do formulário
             col_form1, col_form2 = st.columns(2)
             with col_form1:
                 receita = st.number_input("Alterar Receita Anual para:", value=None, key="sim_receita")
                 divida = st.number_input("Alterar Dívida Total para:", value=None, key="sim_divida")
             with col_form2:
-                # --- NOVO CAMPO 1 ---
                 prazo_pagamento = st.number_input("Alterar Prazo Pagamento (dias):", value=None, key="sim_prazo")
-                # --- NOVO CAMPO 2 ---
                 opcoes_rating = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-"]
                 rating = st.selectbox("Alterar Rating para:", options=opcoes_rating, index=None, placeholder="Manter atual", key="sim_rating")
 
@@ -105,7 +121,6 @@ if empresa_selecionada:
                 alteracoes = {}
                 if receita is not None: alteracoes["receita_anual"] = receita
                 if divida is not None: alteracoes["divida_total"] = divida
-                # --- ADICIONADO À COLETA ---
                 if prazo_pagamento is not None: alteracoes["prazo_pagamento"] = prazo_pagamento
                 if rating is not None: alteracoes["rating"] = rating
                 
@@ -122,12 +137,13 @@ if empresa_selecionada:
                         else:
                             st.error(f"Erro na simulacao: {res.json().get('detail', 'Erro desconhecido')}")
 
-# --- Área de Resultados Dedicada ---
+# --- Seção 3: Área de Exibição dos Resultados ---
 st.divider()
 st.subheader("Resultado da Análise da IA")
 
 if st.session_state.resultado_texto:
     st.markdown(st.session_state.titulo_resultado)
+    # Exibe o resultado em um text_area para preservar a formatação de texto puro (incluindo quebras de linha)
     st.text_area("", value=st.session_state.resultado_texto, height=300, disabled=True)
 else:
     st.info("O resultado da análise aparecerá aqui.")
