@@ -18,7 +18,10 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 
 # Função de análise APRIMORADA
 def gerar_analise_de_credito(empresa: emp) -> str:
-    # 1. Formatar os dados do objeto em uma string clara
+    """
+    Gera uma análise de crédito de forma robusta, com tratamento de erros
+    e verificação de bloqueios de segurança da API.
+    """
     dados_formatados = f"""
     - Nome da Empresa: {empresa.nome}
     - Setor de Atuação: {empresa.setor}
@@ -29,24 +32,45 @@ def gerar_analise_de_credito(empresa: emp) -> str:
     - Resumo de Notícias Recentes: "{empresa.noticias_recentes}"
     """
 
-    # Prompt aprimorado
     prompt = f"""
-    **Instrução:** Você é um analista de crédito sênior e cético, responsável por aprovar ou negar pedidos de crédito para o Banco XPTO. Sua análise deve ser baseada **exclusivamente** nos dados fornecidos abaixo. Não invente informações.
+    **Contexto:** Você é um assistente de IA especialista em análise de crédito. Sua única e exclusiva fonte de informação para a tarefa abaixo são os dados fornecidos no campo "Dados da Empresa". Você está proibido de usar conhecimento externo ou solicitar mais informações. Sua resposta DEVE ser baseada 100% nos dados a seguir.
 
     **Dados da Empresa:**
     {dados_formatados}
 
-    **Sua Tarefa:**
-    Gere um parecer de crédito conciso e profissional no seguinte formato:
+    **Tarefa Obrigatória:**
+    Com base estritamente nos "Dados da Empresa" acima, gere um parecer de crédito estruturado exatamente no formato abaixo. Não inclua preâmbulos ou notas adicionais.
 
-    1.  **Recomendação Preliminar:** (Escolha UMA e APENAS UMA das seguintes opções: "Aprovar Concessão de Crédito", "Aprovar com Cautela", "Recusar Concessão de Crédito").
-    2.  **Justificativa da Decisão:** (Escreva um parágrafo explicando o raciocínio por trás da sua recomendação, conectando os pontos fortes e fracos identificados nos dados. Ex: A receita cobre a dívida? O rating é condizente com as notícias?).
-    3.  **Principais Pontos de Risco:** (Liste em formato de tópicos 2 a 3 riscos principais que você observou).
+    **Formato da Resposta:**
+    1.  Recomendação Preliminar: (Escolha UMA: "Aprovar Concessão de Crédito", "Aprovar com Cautela", "Recusar Concessão de Crédito").
+    2.  Justificativa da Decisão: (Um parágrafo explicando o raciocínio, conectando os diferentes dados fornecidos).
+    3.  Principais Pontos de Risco: (Liste em formato de tópicos 2 a 3 riscos observados nos dados).
     """
     
-    print("\n--- Gerando análise com a IA ---")
-    response = model.generate_content(prompt)
-    return response.text
+    print("\n--- Tentando gerar análise com a IA (Versão Robusta) ---")
+    
+    try:
+        # Tenta gerar o conteúdo
+        response = model.generate_content(prompt)
+
+        # ---- VERIFICAÇÃO DE SEGURANÇA E VALIDADE ----
+        # 1. Verifica se a resposta tem partes válidas. Se não tiver, foi bloqueada.
+        if not response.parts:
+            # Tenta encontrar o motivo do bloqueio para dar uma mensagem mais clara
+            block_reason = response.prompt_feedback.block_reason.name if response.prompt_feedback else "Não especificado"
+            error_message = f"**ERRO:** A análise foi bloqueada pelo filtro de segurança da IA. Motivo: {block_reason}. Tente reformular o prompt ou analisar outra empresa."
+            print(f"!!! ANÁLISE BLOQUEADA. Motivo: {block_reason} !!!")
+            return error_message
+
+        # 2. Se passou, retorna o texto normalmente
+        print("--- Análise gerada com sucesso ---")
+        return response.text
+
+    except Exception as e:
+        # Captura qualquer outro erro inesperado durante a chamada da API
+        error_message = f"**ERRO INESPERADO:** Ocorreu uma falha na comunicação com a API de IA. Detalhes: {str(e)}"
+        print(f"!!! ERRO NA API: {e} !!!")
+        return error_message
 
 
 # MAIN

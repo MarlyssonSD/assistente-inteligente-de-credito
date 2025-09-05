@@ -1,76 +1,63 @@
 # interface.py
 import streamlit as st
 import requests
-import re
 
-# --- Configuração da Página ---
-st.set_page_config(
-    page_title="Assistente de Análise de Crédito",
-    page_icon="🤖",
-    layout="wide"
-)
+st.set_page_config(page_title="Assistente de Crédito", page_icon="🤖", layout="wide")
+API_URL = "http://127.0.0.1:8000"
 
-# --- Constantes ---
-API_URL = "http://127.0.0.1:8000" 
-
-# --- Funções Auxiliares ---
-def formatar_analise(texto_analise):
-    """Formata o texto da IA usando Markdown para melhor visualização."""
-    texto_formatado = re.sub(r'\*\*(.*?)\*\*', r'### \1', texto_analise) # Transforma **Texto** em ### Texto
-    texto_formatado = re.sub(r'\* (.*?)\n', r'- \1\n', texto_formatado) # Transforma * Item em - Item
-    return texto_formatado
-
-
-# --- Interface Principal ---
+# --- Interface ---
 st.title("🤖 Assistente Inteligente para Análise de Crédito")
-st.markdown("Bem-vindo! Selecione uma empresa para iniciar a análise de crédito baseada em IA Generativa.")
+st.markdown("Selecione uma empresa para análise ou para simular cenários de crédito.")
 
-
-# --- Carregar a lista de empresas do backend ---
 try:
-    response = requests.get(f"{API_URL}/empresas")
-    if response.status_code == 200:
-        lista_nomes = response.json().get("nomes", [])
-        empresa_selecionada = st.selectbox(
-            "Selecione a Empresa",
-            options=lista_nomes,
-            index=None,
-            placeholder="Digite ou selecione uma empresa..."
-        )
+    res = requests.get(f"{API_URL}/empresas")
+    if res.status_code == 200:
+        lista_nomes = res.json().get("nomes", [])
+        empresa_selecionada = st.selectbox("Selecione a Empresa", options=lista_nomes, index=None, placeholder="...")
     else:
-        st.error("Não foi possível carregar a lista de empresas do backend.")
+        st.error("Nao foi possivel carregar a lista de empresas.")
         empresa_selecionada = None
-
 except requests.exceptions.ConnectionError:
-    st.error("Não foi possível conectar ao backend. Verifique se o servidor FastAPI está rodando.")
+    st.error("Backend offline. Verifique se o servidor FastAPI esta rodando.")
     empresa_selecionada = None
 
+# --- Container para exibir os resultados ---
+resultado_container = st.container()
 
-# --- Botão de Análise e Exibição dos Resultados ---
-if st.button("Analisar Crédito", disabled=(not empresa_selecionada)):
-    if empresa_selecionada:
-        # Mostra uma mensagem de "carregando" enquanto espera
-        with st.spinner(f"Analisando o perfil de crédito da **{empresa_selecionada}**... Por favor, aguarde."):
-            try:
-                # Chama o endpoint do FastAPI
-                response = requests.get(f"{API_URL}/analise/{empresa_selecionada}")
-                
-                # Verifica se a chamada foi bem sucedida
-                if response.status_code == 200:
-                    resultado = response.json()
-                    analise_texto = resultado.get("analise_de_credito", "Análise não disponível.")
-                    
-                    st.divider()
-                    st.subheader(f"Parecer de Crédito para: {empresa_selecionada}")
-                    
-                    # Usa a função para formatar e exibir o resultado
-                    st.markdown(formatar_analise(analise_texto))
+# --- Ações do Usuário ---
+if empresa_selecionada:
+    if st.button("Analisar Crédito", use_container_width=True):
+        with st.spinner(f"Analisando **{empresa_selecionada}**..."):
+            res = requests.get(f"{API_URL}/analise/{empresa_selecionada}")
+            if res.status_code == 200:
+                resultado = res.json()
+                analise_texto = resultado.get("analise_de_credito", "Erro ao obter analise.")
+                # Exibe o resultado dentro de uma área de texto
+                resultado_container.text_area("Resultado da Análise", value=analise_texto, height=300, disabled=True)
+            else:
+                st.error(f"Erro na análise: {res.json().get('detail', 'Erro desconhecido')}")
 
-                else: # Se a API retornar um erro (ex: 404, 500)
-                    erro_detalhe = response.json().get("detail", "Erro desconhecido.")
-                    st.error(f"Ocorreu um erro ao buscar a análise: {erro_detalhe}")
-
-            except requests.exceptions.ConnectionError:
-                st.error("Erro de conexão. Não foi possível se comunicar com o servidor de análise.")
-            except Exception as e:
-                st.error(f"Um erro inesperado ocorreu: {e}")
+    # Simulação (Simplificada para texto)
+    st.divider()
+    with st.form("formulario_simulacao"):
+        st.subheader(f"🔬 Simular Cenário para: {empresa_selecionada}")
+        receita = st.number_input("Alterar Receita Anual para:", value=None)
+        divida = st.number_input("Alterar Dívida Total para:", value=None)
+        
+        if st.form_submit_button("Simular Cenário"):
+            alteracoes = {}
+            if receita is not None: alteracoes["receita_anual"] = receita
+            if divida is not None: alteracoes["divida_total"] = divida
+            
+            if not alteracoes:
+                st.warning("Nenhum parametro de simulacao foi alterado.")
+            else:
+                payload = {"nome_empresa": empresa_selecionada, "alteracoes": alteracoes}
+                with st.spinner("Executando simulacao..."):
+                    res = requests.post(f"{API_URL}/simular", json=payload)
+                    if res.status_code == 200:
+                        resultado = res.json()
+                        analise_texto = resultado.get("analise_simulada", "Erro ao obter analise simulada.")
+                        resultado_container.text_area(f"Resultado da Simulação (Cenário: {resultado.get('cenario_simulado')})", value=analise_texto, height=300, disabled=True)
+                    else:
+                        st.error(f"Erro na simulacao: {res.json().get('detail', 'Erro desconhecido')}")
