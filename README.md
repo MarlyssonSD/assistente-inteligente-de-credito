@@ -44,6 +44,7 @@ A solução segue uma arquitetura de microsserviços desacoplada, com uma clara 
 ├── main.py                  # Backend: FastAPI com os endpoints da API (/analise, /simular, etc.)
 ├── interface.py             # Frontend: Streamlit (interface do usuário)
 ├── requirements.txt         # Lista de dependências Python do projeto
+├── test_app.py              # Realiza testes na API e Parsers
 └── .env                     # Configurações e chaves secretas (ex: API Key)
 ```
 
@@ -55,7 +56,7 @@ Antes de começar, garanta que você tenha o Python 3.9 (ou superior) instalado.
 
 1.  **Clone o repositório:**
     ```bash
-    git clone [https://github.com/seu-usuario/nome-do-repositorio.git](https://github.com/seu-usuario/nome-do-repositorio.git)
+    git clone [https://github.com/MarlyssonSD/assistente-inteligente-de-credito.git](https://github.com/MarlyssonSD/assistente-inteligente-de-credito.git)
     cd nome-do-repositorio
     ```
 
