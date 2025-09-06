@@ -108,3 +108,5 @@ Em um novo terminal (com o ambiente virtual ativado), execute a aplicação Stre
 streamlit run interface.py
 ```
 O Streamlit abrirá automaticamente o seu navegador padrão no endereço http://localhost:8501.
+
+Diagrama feito no https://www.mermaidchart.com/
