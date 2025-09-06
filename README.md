@@ -29,21 +29,23 @@ A solução segue uma arquitetura de microsserviços desacoplada, com uma clara 
 ---
 
 ## 4. Estrutura dos Arquivos do Projeto
-.
-├── dados/                    # Pasta para armazenar os arquivos de dados brutos
+
+```plaintext
+📂 assistente-inteligente-de-credito
+├── 📂 dados/                # Pasta para armazenar os arquivos de dados brutos
 │   ├── dadoscreditoficticios.csv
 │   ├── dadoscreditoficticios.json
 │   ├── dadoscreditoficticios.xml
 │   └── dadoscreditoficticios.parquet
-├── Empresa.py              # Define o modelo de dados canônico (Dataclass) da empresa.
-├── Parses.py               # Contém as funções para ler e processar os arquivos (CSV, JSON, XML, Parquet).
-├── GeminiAPI.py            # Gerencia a lógica de prompt e a comunicação com a API do Google Gemini.
-├── main.py                 # Backend: Aplicação FastAPI com os endpoints da API (/analise, /simular, etc.).
-├── interface.py            # Frontend: Aplicação Streamlit (a interface do usuário).
-├── requirements.txt        # Lista de dependências Python do projeto.
-└── .env                    # Arquivo de configuração para armazenar chaves secretas (ex: API Key).
-
----
+│
+├── Empresa.py               # Define o modelo de dados canônico (Dataclass) da empresa
+├── Parses.py                # Funções para ler e processar os arquivos (CSV, JSON, XML, Parquet)
+├── GeminiAPI.py             # Lógica de prompt e comunicação com a API do Google Gemini
+├── main.py                  # Backend: FastAPI com os endpoints da API (/analise, /simular, etc.)
+├── interface.py             # Frontend: Streamlit (interface do usuário)
+├── requirements.txt         # Lista de dependências Python do projeto
+└── .env                     # Configurações e chaves secretas (ex: API Key)
+```
 
 ## 5. Pré-requisitos e Instalação
 
