@@ -55,10 +55,9 @@ Antes de começar, garanta que você tenha o Python 3.9 (ou superior) instalado.
 ### 5.1. Configuração do Ambiente
 
 1.  **Clone o repositório:**
-    ```bash
     git clone [https://github.com/MarlyssonSD/assistente-inteligente-de-credito.git](https://github.com/MarlyssonSD/assistente-inteligente-de-credito.git)
-    cd nome-do-repositorio
-    ```
+    
+    cd assistente-inteligente-de-credito
 
 2.  **Crie e ative um ambiente virtual:**
     ```bash
